@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth } from "firebase/auth";
 import { getAnalytics, Analytics } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -18,6 +19,7 @@ const firebaseConfig = {
 // Check if an app has already been initialized to avoid errors during hot reloading in development
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
+const db = getFirestore(app); // Export the Firestore service
 
 let analytics: Analytics | undefined;
 
@@ -26,4 +28,4 @@ if (typeof window !== 'undefined') {
     analytics = getAnalytics(app);
 }
 
-export { app, auth, analytics, GoogleAuthProvider };
+export { app, auth, analytics, GoogleAuthProvider, db };
