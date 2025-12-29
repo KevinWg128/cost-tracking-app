@@ -8,7 +8,9 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import BalanceView from '@/components/BalanceView';
+import InviteMemberModal from '@/components/InviteMemberModal';
 import { getUserProfile } from '@/lib/userProfile';
+import { UserPlus } from 'lucide-react';
 
 interface Group {
     id: string;
@@ -30,6 +32,8 @@ export default function GroupDetails() {
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [showBalances, setShowBalances] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         if (!id) return;
@@ -65,7 +69,7 @@ export default function GroupDetails() {
             }
         };
         fetchGroupAndMembers();
-    }, [id]);
+    }, [id, refreshKey]);
 
     if (loading) {
         return (
@@ -94,6 +98,13 @@ export default function GroupDetails() {
                     </div>
                     <div className="flex gap-3">
                         <button
+                            onClick={() => setShowInviteModal(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+                        >
+                            <UserPlus size={16} />
+                            Invite
+                        </button>
+                        <button
                             onClick={() => setShowBalances(true)}
                             className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
                         >
@@ -109,7 +120,7 @@ export default function GroupDetails() {
                 </div>
 
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-1 md:p-6 min-h-[500px]">
-                    <ExpenseList groupId={id} />
+                    <ExpenseList groupId={id} members={members} />
                 </div>
             </div>
 
@@ -118,6 +129,13 @@ export default function GroupDetails() {
                 onClose={() => setShowBalances(false)}
                 groupId={id}
                 members={members}
+            />
+
+            <InviteMemberModal
+                isOpen={showInviteModal}
+                onClose={() => setShowInviteModal(false)}
+                groupId={id}
+                onMemberAdded={() => setRefreshKey(prev => prev + 1)}
             />
         </div>
     )

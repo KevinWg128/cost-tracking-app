@@ -19,6 +19,7 @@ export interface SplitItem {
     quantity: number;
     assignments: SplitAssignment[];
     splitType: 'equal' | 'exact' | 'percent';
+    isShared: boolean;
 }
 
 interface ItemSplitterProps {
@@ -91,24 +92,43 @@ export default function ItemSplitter({ item, members, onChange, currency }: Item
     const totalAssigned = item.assignments.reduce((sum, a) => sum + a.amount, 0);
     const isTotalCorrect = Math.abs(totalAssigned - item.price) < 0.02; // Small tolerance
 
+    const handleToggleShared = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onChange({ ...item, isShared: !item.isShared });
+    };
+
+    const isShared = item.isShared !== false; // Default to true for backwards compatibility
+
     return (
-        <div className="border border-gray-200 rounded-lg bg-white overflow-hidden transition-all shadow-sm hover:shadow-md">
+        <div className={`border border-gray-200 rounded-lg overflow-hidden transition-all shadow-sm ${isShared ? 'bg-white hover:shadow-md' : 'bg-gray-100 opacity-50'}`}>
             <div
-                className="p-4 flex justify-between items-center cursor-pointer bg-gray-50 hover:bg-gray-100"
-                onClick={() => setIsOpen(!isOpen)}
+                className={`p-4 flex justify-between items-center cursor-pointer ${isShared ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'}`}
+                onClick={() => isShared && setIsOpen(!isOpen)}
             >
-                <div className="flex-1">
-                    <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                    <span className="text-sm text-gray-500">
-                        ${item.price.toFixed(2)} • {item.assignments.length} people
-                    </span>
+                <div className="flex items-center gap-3 flex-1">
+                    <input
+                        type="checkbox"
+                        checked={isShared}
+                        onClick={handleToggleShared}
+                        onChange={() => { }}
+                        className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        title={isShared ? 'Click to exclude from splitting' : 'Click to include in splitting'}
+                    />
+                    <div>
+                        <h4 className={`font-semibold ${isShared ? 'text-gray-800' : 'text-gray-500'}`}>{item.name}</h4>
+                        <span className="text-sm text-gray-500">
+                            ${item.price.toFixed(2)} {isShared ? `• ${item.assignments.length} people` : '• Not shared'}
+                        </span>
+                    </div>
                 </div>
-                <div className={`text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-                    ▼
-                </div>
+                {isShared && (
+                    <div className={`text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+                        ▼
+                    </div>
+                )}
             </div>
 
-            {isOpen && (
+            {isShared && isOpen && (
                 <div className="p-4 border-t border-gray-100">
                     <div className="flex gap-2 mb-4 text-sm">
                         <button
@@ -180,7 +200,7 @@ export default function ItemSplitter({ item, members, onChange, currency }: Item
                                                     type="number"
                                                     value={assignment.amount.toFixed(2)}
                                                     onChange={(e) => updateAmount(assignment.uid, parseFloat(e.target.value))}
-                                                    className="w-20 text-right border rounded p-1 text-sm bg-gray-50"
+                                                    className="w-20 text-right border rounded p-1 text-sm bg-gray-50 text-gray-700"
                                                 />
                                             </div>
                                         )}

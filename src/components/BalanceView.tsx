@@ -82,6 +82,9 @@ export default function BalanceView({ groupId, members, isOpen, onClose }: Balan
 
         // Members subtract their share
         exp.items.forEach((item: any) => {
+            // Skip items that are not shared
+            if (item.isShared === false) return;
+
             // If legacy item (no assignments), ignore or handle gracefully? 
             // We assume new structure.
             if (item.assignments && Array.isArray(item.assignments)) {

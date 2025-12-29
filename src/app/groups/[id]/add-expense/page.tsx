@@ -68,7 +68,8 @@ export default function AddExpensePage() {
         const itemsWithSplit: SplitItem[] = data.items.map((item: any) => ({
             ...item,
             assignments: [],
-            splitType: 'equal'
+            splitType: 'equal',
+            isShared: true
         }));
         setParsedData({
             ...data,
