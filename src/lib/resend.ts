@@ -1,6 +1,7 @@
 "use server";
 
 import { Resend } from 'resend';
+import { isValidEmail } from './validation';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -12,6 +13,11 @@ export async function sendInviteEmail(
     inviterName: string,
     groupName: string
 ) {
+    // Validate email format
+    if (!isValidEmail(recipientEmail)) {
+        return { success: false, error: 'Invalid email address format' };
+    }
+
     try {
         const signupUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/signup?email=${encodeURIComponent(recipientEmail)}`;
 

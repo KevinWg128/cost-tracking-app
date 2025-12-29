@@ -4,6 +4,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { sendInviteEmail } from '@/lib/resend';
 import { getUserProfile } from '@/lib/userProfile';
+import { isValidEmail, isValidFirestoreId } from '@/lib/validation';
 
 export interface SearchUserResult {
     uid: string;
@@ -20,6 +21,11 @@ export async function searchUserByEmail(email: string): Promise<{
     user?: SearchUserResult;
     error?: string;
 }> {
+    // Validate email format
+    if (!isValidEmail(email)) {
+        return { success: false, error: 'Invalid email format' };
+    }
+
     try {
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('email', '==', email.toLowerCase().trim()));
@@ -55,6 +61,14 @@ export async function addMemberToGroup(
     groupId: string,
     userId: string
 ): Promise<{ success: boolean; error?: string }> {
+    // Validate Firestore IDs
+    if (!isValidFirestoreId(groupId)) {
+        return { success: false, error: 'Invalid group ID' };
+    }
+    if (!isValidFirestoreId(userId)) {
+        return { success: false, error: 'Invalid user ID' };
+    }
+
     try {
         const groupRef = doc(db, 'groups', groupId);
 
@@ -89,6 +103,17 @@ export async function sendGroupInvitation(
     inviterUserId: string,
     groupId: string
 ): Promise<{ success: boolean; error?: string }> {
+    // Validate inputs
+    if (!isValidEmail(email)) {
+        return { success: false, error: 'Invalid email format' };
+    }
+    if (!isValidFirestoreId(inviterUserId)) {
+        return { success: false, error: 'Invalid inviter user ID' };
+    }
+    if (!isValidFirestoreId(groupId)) {
+        return { success: false, error: 'Invalid group ID' };
+    }
+
     try {
         // Get inviter's name
         const inviterProfile = await getUserProfile(inviterUserId);

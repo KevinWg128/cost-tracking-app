@@ -2,11 +2,22 @@
 
 import { geminiClient } from "@/lib/gemini";
 import { uploadToS3AndGetPresignedUrl } from "@/lib/s3";
+import { isValidBase64Image, isValidFileName, isValidImageUrl } from "@/lib/validation";
 
 /**
  * Upload image to S3 and return the presigned URL
  */
 export async function uploadImageToS3(base64Image: string, fileName: string) {
+    // Validate inputs
+    const imageValidation = isValidBase64Image(base64Image);
+    if (!imageValidation.valid) {
+        return { success: false, error: imageValidation.error || 'Invalid image data' };
+    }
+
+    if (!isValidFileName(fileName)) {
+        return { success: false, error: 'Invalid file name' };
+    }
+
     try {
         console.log("Uploading image to S3...");
 
@@ -38,6 +49,11 @@ export async function uploadImageToS3(base64Image: string, fileName: string) {
  * Parse receipt using Gemini with image URL from S3
  */
 export async function parseReceiptAction(imageUrl: string) {
+    // Validate image URL is from allowed domain
+    if (!isValidImageUrl(imageUrl)) {
+        return { success: false, error: 'Invalid image URL - must be from allowed domain' };
+    }
+
     try {
         console.log("Analyzing receipt with Gemini using S3 URL...");
 
