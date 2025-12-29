@@ -21,7 +21,7 @@ This document outlines the security checklist items that are currently not met a
 
 | Checklist Item | File & Line | Explanation |
 |----------------|-------------|-------------|
-| **Password length/complexity is sufficient** | [signup/page.tsx:32-33](file:///home/kevin/side-project/cost-tracking-app/src/app/signup/page.tsx#L32-L33) | Password is passed directly to Firebase without client-side minimum length/complexity checks. |
+| **Password length/complexity is sufficient** | [signup/page.tsx:32-33](file:///home/kevin/side-project/cost-tracking-app/src/app/signup/page.tsx#L32-L33) | ✅ **Addressed**: Password validation now requires minimum 8 characters, uppercase, lowercase, number, and special character with visual feedback. |
 | **Invalid login attempts handled with lockouts/rate limits** | [signin/page.tsx:22-31](file:///home/kevin/side-project/cost-tracking-app/src/app/signin/page.tsx#L22-L31) | No rate limiting or lockout mechanism for failed login attempts. |
 | **Forgot password feature is secure** | N/A | No forgot password feature exists in the codebase. |
 | **Authorization checks are sufficiently granular** | [inviteActions.ts:54-81](file:///home/kevin/side-project/cost-tracking-app/src/server/inviteActions.ts#L54-L81) | `addMemberToGroup` doesn't verify the caller has permission to add members. |
