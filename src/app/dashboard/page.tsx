@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import CreateGroupModal from '@/components/CreateGroupModal';
+import MonthlySpendingChart from '@/components/MonthlySpendingChart';
+import UserBalanceSummary from '@/components/UserBalanceSummary';
 import Link from 'next/link';
 
 interface Group {
@@ -41,6 +43,8 @@ export default function Dashboard() {
         return () => unsubscribe();
     }, [currentUser]);
 
+    const groupIds = groups.map(g => g.id);
+
     if (!currentUser) {
         return <div className="min-h-screen flex items-center justify-center">Please log in to view dashboard.</div>;
     }
@@ -69,6 +73,21 @@ export default function Dashboard() {
                         </button>
                     </div>
                 </header>
+
+                {/* Monthly Spending Chart */}
+                {!loading && groupIds.length > 0 && (
+                    <MonthlySpendingChart groupIds={groupIds} />
+                )}
+
+                {/* Balance Summary */}
+                {!loading && groupIds.length > 0 && (
+                    <UserBalanceSummary groupIds={groupIds} />
+                )}
+
+                {/* Groups Section */}
+                {!loading && groups.length > 0 && (
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Groups</h2>
+                )}
 
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">

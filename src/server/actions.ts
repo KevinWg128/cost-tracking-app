@@ -49,12 +49,24 @@ export async function parseReceiptAction(imageUrl: string) {
       2. Total amount of the receipt.
       3. Date of the receipt.
       4. Merchant/Store name.
+      5. Categorize the expense based on the merchant and items. Use one of these categories:
+         - Grocery (supermarkets, food stores)
+         - Dining (restaurants, cafes, fast food)
+         - Travel (flights, hotels, car rentals, gas stations)
+         - Entertainment (movies, concerts, games)
+         - Shopping (clothing, electronics, general retail)
+         - Utilities (hydro, electricity, water, gas bills)
+         - Internet (internet service, phone bills)
+         - Healthcare (pharmacy, medical expenses)
+         - Transportation (transit, taxi, ride-sharing)
+         - Other (anything that doesn't fit above)
 
       Return ONLY a valid JSON object with this structure:
       {
         "merchant": "Store Name",
         "date": "YYYY-MM-DD",
         "total": 123.45,
+        "category": "Grocery",
         "items": [
           { "name": "Item 1", "price": 10.00, "quantity": 1 }
         ]
@@ -63,7 +75,7 @@ export async function parseReceiptAction(imageUrl: string) {
     `;
 
         // Generate Content using file URL instead of inline base64
-        console.log("Using model: gemini-1.5-flash with image URL");
+        console.log("Using model with image URL");
         console.log("Gemini API Key: ", process.env.GEMINI_API_KEY);
         const response = await geminiClient.models.generateContent({
             model: "gemini-2.5-flash",

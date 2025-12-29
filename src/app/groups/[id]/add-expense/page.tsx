@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ReceiptUpload from '@/components/ReceiptUpload';
+import ManualExpenseForm from '@/components/ManualExpenseForm';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { Upload, PenLine } from 'lucide-react';
 
 import ItemSplitter, { SplitItem } from '@/components/ItemSplitter';
 import { getUserProfile } from '@/lib/userProfile';
@@ -18,12 +20,30 @@ interface ExpenseItem {
     assignedTo: string[]; // UIDs
 }
 
+const EXPENSE_CATEGORIES = [
+    'Grocery',
+    'Dining',
+    'Travel',
+    'Entertainment',
+    'Shopping',
+    'Utilities',
+    'Internet',
+    'Healthcare',
+    'Transportation',
+    'Other'
+] as const;
+
+type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
+
 interface ParsedData {
     merchant: string;
     date: string;
     total: number;
+    category: ExpenseCategory;
     items: SplitItem[];
 }
+
+type EntryMode = 'upload' | 'manual';
 
 export default function AddExpensePage() {
     const params = useParams();
@@ -31,7 +51,8 @@ export default function AddExpensePage() {
     const id = params?.id as string;
     const { currentUser } = useAuth();
 
-    const [step, setStep] = useState<'upload' | 'review'>('upload');
+    const [step, setStep] = useState<'input' | 'review'>('input');
+    const [entryMode, setEntryMode] = useState<EntryMode>('upload');
     const [parsedData, setParsedData] = useState<ParsedData | null>(null);
     const [receiptUrl, setReceiptUrl] = useState('');
     const [groupMembers, setGroupMembers] = useState<any[]>([]);
@@ -73,9 +94,29 @@ export default function AddExpensePage() {
         }));
         setParsedData({
             ...data,
+            category: data.category || 'Other',
             items: itemsWithSplit
         });
         setReceiptUrl(url);
+        setStep('review');
+    };
+
+    const handleManualSubmit = (data: { merchant: string; date: string; total: number; category: string; items: { name: string; price: number; quantity: number }[] }) => {
+        // Transform items to include Assignments and SplitType
+        const itemsWithSplit: SplitItem[] = data.items.map((item) => ({
+            ...item,
+            assignments: [],
+            splitType: 'equal' as const,
+            isShared: true
+        }));
+        setParsedData({
+            merchant: data.merchant,
+            date: data.date,
+            total: data.total,
+            category: (data.category as ExpenseCategory) || 'Other',
+            items: itemsWithSplit
+        });
+        setReceiptUrl(''); // No receipt URL for manual entry
         setStep('review');
     };
 
@@ -88,9 +129,10 @@ export default function AddExpensePage() {
                 payerId: currentUser.uid,
                 description: parsedData.merchant || "Unknown Store",
                 totalAmount: parsedData.total,
+                category: parsedData.category,
                 date: parsedData.date ? new Date(parsedData.date) : serverTimestamp(),
                 items: parsedData.items,
-                receiptImageUrl: receiptUrl,
+                receiptImageUrl: receiptUrl || null,
                 createdAt: serverTimestamp()
             });
             router.push(`/groups/${id}`);
@@ -112,20 +154,50 @@ export default function AddExpensePage() {
                     <h1 className="text-3xl text-gray-700 font-bold mt-2">Add New Expense</h1>
                 </div>
 
-                {step === 'upload' && (
+                {step === 'input' && (
                     <div className="bg-white p-8 rounded-2xl shadow-sm">
-                        <h2 className="text-xl font-semibold text-gray-700 mb-6">Upload Receipt</h2>
-                        <ReceiptUpload onParsed={handleParsed} />
-
-                        <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                            <span className="text-gray-400 text-sm">Or enter manually (Coming Soon)</span>
+                        {/* Entry Mode Tabs */}
+                        <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
+                            <button
+                                onClick={() => setEntryMode('upload')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium text-sm transition-all ${entryMode === 'upload'
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <Upload className="w-4 h-4" />
+                                Upload Receipt
+                            </button>
+                            <button
+                                onClick={() => setEntryMode('manual')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium text-sm transition-all ${entryMode === 'manual'
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <PenLine className="w-4 h-4" />
+                                Enter Manually
+                            </button>
                         </div>
+
+                        {/* Receipt Upload Mode */}
+                        {entryMode === 'upload' && (
+                            <ReceiptUpload onParsed={handleParsed} />
+                        )}
+
+                        {/* Manual Entry Mode */}
+                        {entryMode === 'manual' && (
+                            <ManualExpenseForm
+                                onSubmit={handleManualSubmit}
+                                onCancel={() => router.push(`/groups/${id}`)}
+                            />
+                        )}
                     </div>
                 )}
 
                 {step === 'review' && parsedData && (
                     <div className="bg-white p-6 rounded-2xl shadow-sm space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Merchant</label>
                                 <input
@@ -143,6 +215,18 @@ export default function AddExpensePage() {
                                     onChange={e => setParsedData({ ...parsedData, total: parseFloat(e.target.value) })}
                                     className="mt-1 w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Category</label>
+                                <select
+                                    value={parsedData.category}
+                                    onChange={e => setParsedData({ ...parsedData, category: e.target.value as ExpenseCategory })}
+                                    className="mt-1 w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 bg-white"
+                                >
+                                    {EXPENSE_CATEGORIES.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
@@ -166,7 +250,7 @@ export default function AddExpensePage() {
                         </div>
 
                         <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
-                            <button onClick={() => setStep('upload')} className="px-5 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Back</button>
+                            <button onClick={() => setStep('input')} className="px-5 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Back</button>
                             <button
                                 onClick={handleSave}
                                 disabled={loading}
