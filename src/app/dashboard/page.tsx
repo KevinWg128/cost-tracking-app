@@ -8,6 +8,7 @@ import CreateGroupModal from '@/components/CreateGroupModal';
 import MonthlySpendingChart from '@/components/MonthlySpendingChart';
 import UserBalanceSummary from '@/components/UserBalanceSummary';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Group {
     id: string;
@@ -17,7 +18,17 @@ interface Group {
 }
 
 export default function Dashboard() {
-    const { currentUser } = useAuth();
+    const { currentUser, logout } = useAuth();
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            router.push('/');
+        } catch (error) {
+            console.error('Failed to logout:', error);
+        }
+    };
     const [groups, setGroups] = useState<Group[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -65,6 +76,12 @@ export default function Dashboard() {
                         >
                             Profile
                         </Link>
+                        <button
+                            onClick={handleLogout}
+                            className="px-4 py-2.5 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors"
+                        >
+                            Logout
+                        </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"

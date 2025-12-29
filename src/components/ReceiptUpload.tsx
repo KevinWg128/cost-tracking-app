@@ -1,10 +1,22 @@
 "use client";
 
 import { useState } from 'react';
-import { uploadImageToS3, parseReceiptAction } from '@/server/actions';
 
 interface ReceiptUploadProps {
-    onParsed: (data: any, imageUrl: string) => void;
+    onParsed: (data: unknown, imageUrl: string) => void;
+}
+
+interface UploadResponse {
+    success: boolean;
+    url?: string;
+    key?: string;
+    error?: string;
+}
+
+interface ParseResponse {
+    success: boolean;
+    data?: unknown;
+    error?: string;
 }
 
 export default function ReceiptUpload({ onParsed }: ReceiptUploadProps) {
@@ -73,8 +85,16 @@ export default function ReceiptUpload({ onParsed }: ReceiptUploadProps) {
 
             setStatus('Uploading to S3...');
 
-            // Step 3: Upload to S3
-            const uploadResult = await uploadImageToS3(base64Data, file.name);
+            // Step 3: Upload to S3 via API route
+            const uploadResponse = await fetch('/api/upload/s3', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    base64Image: base64Data,
+                    fileName: file.name.replace(/[^a-zA-Z0-9_\-\.]/g, '_'),
+                }),
+            });
+            const uploadResult: UploadResponse = await uploadResponse.json();
 
             if (!uploadResult.success) {
                 throw new Error(uploadResult.error || 'Upload failed');
@@ -83,14 +103,19 @@ export default function ReceiptUpload({ onParsed }: ReceiptUploadProps) {
             const s3Url = uploadResult.url!;
             setStatus('Analyzing receipt with Gemini...');
 
-            // Step 4: Parse receipt with Gemini using S3 URL
-            const result = await parseReceiptAction(s3Url);
+            // Step 4: Parse receipt with Gemini using S3 URL via API route
+            const parseResponse = await fetch('/api/receipts/parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl: s3Url }),
+            });
+            const parseResult: ParseResponse = await parseResponse.json();
 
-            if (result.success) {
-                onParsed(result.data, s3Url);
+            if (parseResult.success) {
+                onParsed(parseResult.data, s3Url);
             } else {
-                console.error("Parse error:", result.error);
-                alert(`Error parsing receipt: ${result.error}`);
+                console.error("Parse error:", parseResult.error);
+                alert(`Error parsing receipt: ${parseResult.error}`);
                 setStatus('Failed to analyze.');
             }
         } catch (error) {
@@ -124,4 +149,3 @@ export default function ReceiptUpload({ onParsed }: ReceiptUploadProps) {
         </div>
     );
 }
-

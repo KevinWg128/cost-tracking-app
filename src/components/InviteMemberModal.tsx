@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { searchUserByEmail, addMemberToGroup, sendGroupInvitation, SearchUserResult } from '@/server/inviteActions';
 import { UserPlus, Search, Mail, Check, X, Loader2 } from 'lucide-react';
 
 interface InviteMemberModalProps {
@@ -10,6 +9,20 @@ interface InviteMemberModalProps {
     onClose: () => void;
     groupId: string;
     onMemberAdded: () => void;
+}
+
+interface SearchUserResult {
+    uid: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+}
+
+interface ApiResponse<T = unknown> {
+    success: boolean;
+    error?: string;
+    user?: T;
+    message?: string;
 }
 
 export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAdded }: InviteMemberModalProps) {
@@ -31,7 +44,9 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
         setMessage(null);
 
         try {
-            const result = await searchUserByEmail(email);
+            const response = await fetch(`/api/users/search?email=${encodeURIComponent(email)}`);
+            const result: ApiResponse<SearchUserResult> = await response.json();
+
             if (result.success) {
                 if (result.user) {
                     setSearchResult(result.user);
@@ -55,7 +70,13 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
         setMessage(null);
 
         try {
-            const result = await addMemberToGroup(groupId, searchResult.uid);
+            const response = await fetch(`/api/groups/${groupId}/members`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: searchResult.uid }),
+            });
+            const result: ApiResponse = await response.json();
+
             if (result.success) {
                 setMessage({ type: 'success', text: `${searchResult.firstName || 'User'} has been added to the group!` });
                 onMemberAdded();
@@ -82,7 +103,16 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
         setMessage(null);
 
         try {
-            const result = await sendGroupInvitation(email, currentUser.uid, groupId);
+            const response = await fetch(`/api/groups/${groupId}/invite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    inviterUserId: currentUser.uid
+                }),
+            });
+            const result: ApiResponse = await response.json();
+
             if (result.success) {
                 setMessage({ type: 'success', text: `Invitation sent to ${email}!` });
                 // Reset form after success
@@ -210,8 +240,8 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
                 {message && (
                     <div
                         className={`p-4 rounded-xl ${message.type === 'success'
-                                ? 'bg-green-100 text-green-800 border border-green-200'
-                                : 'bg-red-100 text-red-800 border border-red-200'
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
                             }`}
                     >
                         {message.text}
