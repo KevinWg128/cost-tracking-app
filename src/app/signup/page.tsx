@@ -3,12 +3,15 @@
 import { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
+import { createUserProfile } from '../../lib/userProfile';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import GoogleSignInButton from '../../components/GoogleSignInButton';
 
 
 export default function SignUp() {
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -19,9 +22,24 @@ export default function SignUp() {
         e.preventDefault();
         setLoading(true);
         setError('');
+
+        if (!firstName.trim()) {
+            setError('First name is required');
+            setLoading(false);
+            return;
+        }
+
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             console.log('User signed up successfully:', userCredential.user);
+
+            // Create user profile in Firestore
+            await createUserProfile(userCredential.user.uid, {
+                email: userCredential.user.email || email,
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+            });
+
             router.push('/');
         } catch (err: any) {
             console.error('Error signing up:', err.message);
@@ -43,6 +61,39 @@ export default function SignUp() {
 
                 <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
                     <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="firstName" className="block text-sm font-medium text-gray-300 mb-2">
+                                    First Name <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    id="firstName"
+                                    name="firstName"
+                                    type="text"
+                                    autoComplete="given-name"
+                                    required
+                                    className="block w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 outline-none placeholder-gray-500"
+                                    placeholder="John"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="lastName" className="block text-sm font-medium text-gray-300 mb-2">
+                                    Last Name
+                                </label>
+                                <input
+                                    id="lastName"
+                                    name="lastName"
+                                    type="text"
+                                    autoComplete="family-name"
+                                    className="block w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 outline-none placeholder-gray-500"
+                                    placeholder="Doe"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                />
+                            </div>
+                        </div>
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                                 Email Address

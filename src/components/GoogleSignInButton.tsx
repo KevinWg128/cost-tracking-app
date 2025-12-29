@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, GoogleAuthProvider } from '../lib/firebase';
+import { createUserProfile } from '../lib/userProfile';
 import { useRouter } from 'next/navigation';
 
 interface GoogleSignInButtonProps {
@@ -21,6 +22,21 @@ export default function GoogleSignInButton({ text = 'Continue with Google' }: Go
         try {
             const result = await signInWithPopup(auth, provider);
             console.log('Google user:', result.user);
+
+            // Extract first and last name from displayName
+            const displayName = result.user.displayName || '';
+            const nameParts = displayName.trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
+            // Create/update user profile in Firestore
+            await createUserProfile(result.user.uid, {
+                email: result.user.email || '',
+                firstName,
+                lastName,
+                photoURL: result.user.photoURL || undefined,
+            });
+
             router.push('/');
         } catch (err: any) {
             console.error('Error signing in with Google:', err.message);

@@ -3,6 +3,8 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth } from "firebase/auth";
 import { getAnalytics, Analytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,6 +22,7 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app); // Export the Firestore service
+const storage = getStorage(app);
 
 let analytics: Analytics | undefined;
 
@@ -28,4 +31,4 @@ if (typeof window !== 'undefined') {
     analytics = getAnalytics(app);
 }
 
-export { app, auth, analytics, GoogleAuthProvider, db };
+export { app, auth, analytics, GoogleAuthProvider, db, storage };
