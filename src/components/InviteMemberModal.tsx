@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, Search, Mail, Check, X, Loader2 } from 'lucide-react';
+import { UserPlus, Search, Mail, Loader2, X, Send } from 'lucide-react';
 
 interface InviteMemberModalProps {
     isOpen: boolean;
@@ -23,6 +23,7 @@ interface ApiResponse<T = unknown> {
     error?: string;
     user?: T;
     message?: string;
+    isRegisteredUser?: boolean;
 }
 
 export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAdded }: InviteMemberModalProps) {
@@ -63,44 +64,7 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
         }
     };
 
-    const handleAddMember = async () => {
-        if (!searchResult || !currentUser) return;
-
-        setActionLoading(true);
-        setMessage(null);
-
-        try {
-            const token = await currentUser.getIdToken();
-            const response = await fetch(`/api/groups/${groupId}/members`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ userId: searchResult.uid }),
-            });
-            const result: ApiResponse = await response.json();
-
-            if (result.success) {
-                setMessage({ type: 'success', text: `${searchResult.firstName || 'User'} has been added to the group!` });
-                onMemberAdded();
-                // Reset form after success
-                setTimeout(() => {
-                    setEmail('');
-                    setSearchResult(null);
-                    setMessage(null);
-                }, 2000);
-            } else {
-                setMessage({ type: 'error', text: result.error || 'Failed to add member' });
-            }
-        } catch {
-            setMessage({ type: 'error', text: 'An unexpected error occurred' });
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleSendInvite = async () => {
+    const handleSendInvite = async (isRegistered: boolean) => {
         if (!currentUser) return;
 
         setActionLoading(true);
@@ -114,18 +78,26 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email: email.trim().toLowerCase() }),
             });
             const result: ApiResponse = await response.json();
 
             if (result.success) {
-                setMessage({ type: 'success', text: `Invitation sent to ${email}!` });
+                const userName = searchResult?.firstName || email;
+                setMessage({
+                    type: 'success',
+                    text: isRegistered
+                        ? `Invitation sent to ${userName}! They'll need to accept it to join.`
+                        : `Invitation sent to ${email}! They'll receive an email to sign up.`
+                });
+                onMemberAdded();
                 // Reset form after success
                 setTimeout(() => {
                     setEmail('');
+                    setSearchResult(null);
                     setNotFound(false);
                     setMessage(null);
-                }, 2000);
+                }, 3000);
             } else {
                 setMessage({ type: 'error', text: result.error || 'Failed to send invitation' });
             }
@@ -192,7 +164,7 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
 
                 {/* Search result - User found */}
                 {searchResult && (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl mb-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="font-semibold text-gray-800">
@@ -201,20 +173,23 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
                                 <p className="text-sm text-gray-500">{searchResult.email}</p>
                             </div>
                             <button
-                                onClick={handleAddMember}
+                                onClick={() => handleSendInvite(true)}
                                 disabled={actionLoading}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
                             >
                                 {actionLoading ? (
                                     <Loader2 className="animate-spin" size={16} />
                                 ) : (
                                     <>
-                                        <Check size={16} />
-                                        Add to Group
+                                        <Send size={16} />
+                                        Send Invitation
                                     </>
                                 )}
                             </button>
                         </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                            They will receive an email and need to accept the invitation to join.
+                        </p>
                     </div>
                 )}
 
@@ -222,10 +197,10 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
                 {notFound && (
                     <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
                         <p className="text-gray-700 mb-3">
-                            No user found with this email. Would you like to send them an invitation?
+                            No user found with this email. Would you like to send them an invitation to sign up?
                         </p>
                         <button
-                            onClick={handleSendInvite}
+                            onClick={() => handleSendInvite(false)}
                             disabled={actionLoading}
                             className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
                         >
@@ -238,6 +213,9 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
                                 </>
                             )}
                         </button>
+                        <p className="text-xs text-gray-500 mt-2">
+                            After they sign up, they can accept the invitation from their dashboard.
+                        </p>
                     </div>
                 )}
 

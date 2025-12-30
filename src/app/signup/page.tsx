@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { createUserProfile } from '../../lib/userProfile';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import GoogleSignInButton from '../../components/GoogleSignInButton';
+import { Mail } from 'lucide-react';
 
 interface PasswordRequirement {
     label: string;
@@ -21,7 +22,7 @@ const passwordRequirements: PasswordRequirement[] = [
     { label: 'One special character (!@#$%^&*)', test: (p) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
 ];
 
-export default function SignUp() {
+function SignUpContent() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -29,6 +30,17 @@ export default function SignUp() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Pre-fill email and track invitation token from URL
+    const invitationToken = searchParams.get('invitation');
+    const prefilledEmail = searchParams.get('email');
+
+    useEffect(() => {
+        if (prefilledEmail) {
+            setEmail(prefilledEmail);
+        }
+    }, [prefilledEmail]);
 
     const passwordValidation = useMemo(() => {
         return passwordRequirements.map((req) => ({
@@ -40,6 +52,25 @@ export default function SignUp() {
     const isPasswordValid = useMemo(() => {
         return passwordValidation.every((req) => req.met);
     }, [passwordValidation]);
+
+    const linkPendingInvitationsToUser = async (userId: string, userEmail: string) => {
+        try {
+            // Call the API to link pending invitations
+            const response = await fetch('/api/invitations/link', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId, email: userEmail }),
+            });
+
+            if (!response.ok) {
+                console.warn('Failed to link pending invitations');
+            }
+        } catch (err) {
+            console.error('Error linking invitations:', err);
+        }
+    };
 
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,7 +100,18 @@ export default function SignUp() {
                 lastName: lastName.trim(),
             });
 
-            router.push('/');
+            // Link any pending invitations to this user
+            await linkPendingInvitationsToUser(
+                userCredential.user.uid,
+                userCredential.user.email || email
+            );
+
+            // If there's an invitation token, redirect to accept it
+            if (invitationToken) {
+                router.push(`/invitations/accept?token=${invitationToken}`);
+            } else {
+                router.push('/dashboard');
+            }
         } catch (err: any) {
             console.error('Error signing up:', err.message);
             setError(err.message);
@@ -87,6 +129,17 @@ export default function SignUp() {
                     </h2>
                     <p className="mt-2 text-gray-400">Join us to start tracking your costs</p>
                 </div>
+
+                {/* Invitation banner */}
+                {invitationToken && (
+                    <div className="p-4 bg-blue-900/30 border border-blue-500/50 rounded-xl flex items-center gap-3">
+                        <Mail className="text-blue-400 shrink-0" size={24} />
+                        <div>
+                            <p className="text-blue-200 text-sm font-medium">You&apos;ve been invited!</p>
+                            <p className="text-blue-300/70 text-xs">Complete signup to join the group automatically.</p>
+                        </div>
+                    </div>
+                )}
 
                 <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
                     <div className="space-y-4">
@@ -198,7 +251,7 @@ export default function SignUp() {
                                 Creating Account...
                             </span>
                         ) : (
-                            'Sign Up'
+                            invitationToken ? 'Sign Up & Join Group' : 'Sign Up'
                         )}
                     </button>
 
@@ -222,5 +275,17 @@ export default function SignUp() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function SignUp() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        }>
+            <SignUpContent />
+        </Suspense>
     );
 }

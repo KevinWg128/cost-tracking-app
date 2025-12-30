@@ -2,14 +2,19 @@
  * API route handler for sending group invitations
  * POST /api/groups/[id]/invite
  * Requires: Authentication + Caller must be a group member
+ * 
+ * Creates a pending invitation and sends an email to the invitee.
+ * For registered users: Email contains accept/decline links
+ * For non-registered users: Email contains signup link with invitation token
  */
 
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { sendInviteEmail } from '@/lib/resend';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { sendInviteEmail, sendRegisteredUserInviteEmail } from '@/lib/resend';
 import { getUserProfile } from '@/lib/userProfile';
+import { createPendingInvitation } from '@/lib/pendingInvitations';
 import { isValidEmail, isValidFirestoreId } from '@/lib/validation';
 import { verifyAuthToken, isGroupMember } from '@/lib/auth';
 import { logger, generateRequestId } from '@/lib/logger';
@@ -35,9 +40,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         const { id: groupId } = await context.params;
         const body: InviteRequest = await request.json();
         const { email } = body;
+        const normalizedEmail = email.toLowerCase().trim();
 
         // Validate inputs
-        if (!isValidEmail(email)) {
+        if (!isValidEmail(normalizedEmail)) {
             return errorResponse('Invalid email format', ErrorCodes.BAD_REQUEST);
         }
         if (!isValidFirestoreId(groupId)) {
@@ -64,29 +70,105 @@ export async function POST(request: NextRequest, context: RouteContext) {
             return errorResponse('Group not found', ErrorCodes.NOT_FOUND);
         }
 
-        const groupName = groupSnap.data().name || 'an expense group';
+        const groupData = groupSnap.data();
+        const groupName = groupData.name || 'an expense group';
 
-        // Send the email
-        const result = await sendInviteEmail(email, inviterName, groupName);
+        // Check if user is already a member
+        if (groupData.memberIds?.includes(authResult.uid)) {
+            // Check if the email being invited is the caller themselves
+            const callerProfile = await getUserProfile(authResult.uid);
+            if (callerProfile?.email?.toLowerCase() === normalizedEmail) {
+                return errorResponse('You cannot invite yourself', ErrorCodes.BAD_REQUEST);
+            }
+        }
 
-        if (!result.success) {
-            logger.warn('Failed to send invitation', {
+        // Check if user already exists in the system
+        const usersQuery = query(
+            collection(db, 'users'),
+            where('email', '==', normalizedEmail)
+        );
+        const userQuerySnap = await getDocs(usersQuery);
+
+        let inviteeUid: string | undefined;
+        let isRegisteredUser = false;
+
+        if (!userQuerySnap.empty) {
+            const existingUser = userQuerySnap.docs[0];
+            inviteeUid = existingUser.id;
+            isRegisteredUser = true;
+
+            // Check if user is already a member of the group
+            if (groupData.memberIds?.includes(inviteeUid)) {
+                return errorResponse('User is already a member of this group', ErrorCodes.BAD_REQUEST);
+            }
+        }
+
+        // Create pending invitation
+        const invitationResult = await createPendingInvitation({
+            groupId,
+            groupName,
+            inviterUid: authResult.uid,
+            inviterName,
+            inviteeEmail: normalizedEmail,
+            inviteeUid,
+        });
+
+        if (!invitationResult.success) {
+            if (invitationResult.existingInvitation) {
+                return errorResponse('An invitation is already pending for this user', ErrorCodes.BAD_REQUEST);
+            }
+            return errorResponse(invitationResult.error || 'Failed to create invitation', ErrorCodes.INTERNAL_ERROR);
+        }
+
+        // Send the appropriate email
+        let emailResult;
+        if (isRegisteredUser) {
+            // Send email with accept/decline links
+            emailResult = await sendRegisteredUserInviteEmail(
+                normalizedEmail,
+                inviterName,
+                groupName,
+                invitationResult.token!
+            );
+        } else {
+            // Send signup invitation email
+            emailResult = await sendInviteEmail(
+                normalizedEmail,
+                inviterName,
+                groupName,
+                invitationResult.token!
+            );
+        }
+
+        if (!emailResult.success) {
+            logger.warn('Failed to send invitation email', {
                 requestId,
                 groupId,
-                email,
-                error: result.error
+                email: normalizedEmail,
+                error: emailResult.error
             });
-            return errorResponse(result.error || 'Failed to send invitation', ErrorCodes.INTERNAL_ERROR);
+            // Note: Invitation is still created, email just failed
+            return successResponse({
+                message: 'Invitation created but email could not be sent. The user can still accept via their dashboard.',
+                emailSent: false
+            });
         }
 
         logger.info('Invitation sent successfully', {
             requestId,
             groupId,
-            email,
+            email: normalizedEmail,
             invitedBy: authResult.uid,
+            isRegisteredUser,
         });
 
-        return successResponse({ message: 'Invitation sent successfully' });
+        return successResponse({
+            message: isRegisteredUser
+                ? 'Invitation sent! The user will need to accept it to join the group.'
+                : 'Invitation sent! Once they sign up, they can accept the invitation.',
+            emailSent: true,
+            isRegisteredUser
+        });
 
     } catch (error: unknown) {
         logger.error('Error sending invitation', error, { requestId });

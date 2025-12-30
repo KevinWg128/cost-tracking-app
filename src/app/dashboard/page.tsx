@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import CreateGroupModal from '@/components/CreateGroupModal';
 import MonthlySpendingChart from '@/components/MonthlySpendingChart';
 import UserBalanceSummary from '@/components/UserBalanceSummary';
+import PendingInvitations from '@/components/PendingInvitations';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -66,7 +67,7 @@ export default function Dashboard() {
             <div className="max-w-6xl mx-auto">
                 <header className="flex justify-between items-center mb-10">
                     <div>
-                        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Your Groups</h1>
+                        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Your Expenses</h1>
                         <p className="text-gray-500 mt-2 text-lg">Manage your shared expenses and groups.</p>
                     </div>
 
@@ -155,6 +156,9 @@ export default function Dashboard() {
                         )}
                     </div>
                 </header>
+
+                {/* Pending Invitations */}
+                <PendingInvitations onInvitationAccepted={() => { }} />
 
                 {/* Monthly Spending Chart */}
                 {!loading && groupIds.length > 0 && (
