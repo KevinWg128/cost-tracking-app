@@ -1,6 +1,7 @@
 /**
  * API route handler for adding members to a group
  * POST /api/groups/[id]/members
+ * Requires: Authentication + Caller must be a group member
  */
 
 import { NextRequest } from 'next/server';
@@ -8,6 +9,7 @@ import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { isValidFirestoreId } from '@/lib/validation';
+import { verifyAuthToken, isGroupMember } from '@/lib/auth';
 
 interface AddMemberRequest {
     userId: string;
@@ -19,6 +21,12 @@ interface RouteContext {
 
 export async function POST(request: NextRequest, context: RouteContext) {
     try {
+        // Authenticate the caller
+        const authResult = await verifyAuthToken(request);
+        if (!authResult) {
+            return errorResponse('Authentication required', ErrorCodes.UNAUTHORIZED);
+        }
+
         const { id: groupId } = await context.params;
         const body: AddMemberRequest = await request.json();
         const { userId } = body;
@@ -29,6 +37,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
         if (!isValidFirestoreId(userId)) {
             return errorResponse('Invalid user ID', ErrorCodes.BAD_REQUEST);
+        }
+
+        // Verify caller is a member of the group
+        const callerIsMember = await isGroupMember(groupId, authResult.uid);
+        if (!callerIsMember) {
+            return errorResponse('You must be a member of this group to add members', ErrorCodes.FORBIDDEN);
         }
 
         const groupRef = doc(db, 'groups', groupId);

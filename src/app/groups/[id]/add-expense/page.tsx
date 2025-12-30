@@ -161,8 +161,8 @@ export default function AddExpensePage() {
                             <button
                                 onClick={() => setEntryMode('upload')}
                                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium text-sm transition-all ${entryMode === 'upload'
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 <Upload className="w-4 h-4" />
@@ -171,8 +171,8 @@ export default function AddExpensePage() {
                             <button
                                 onClick={() => setEntryMode('manual')}
                                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium text-sm transition-all ${entryMode === 'manual'
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 <PenLine className="w-4 h-4" />
@@ -181,8 +181,8 @@ export default function AddExpensePage() {
                         </div>
 
                         {/* Receipt Upload Mode */}
-                        {entryMode === 'upload' && (
-                            <ReceiptUpload onParsed={handleParsed} />
+                        {entryMode === 'upload' && currentUser && (
+                            <ReceiptUpload onParsed={handleParsed} currentUser={currentUser} />
                         )}
 
                         {/* Manual Entry Mode */}

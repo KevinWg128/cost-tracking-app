@@ -10,7 +10,8 @@ import { useParams } from 'next/navigation';
 import BalanceView from '@/components/BalanceView';
 import InviteMemberModal from '@/components/InviteMemberModal';
 import { getUserProfile } from '@/lib/userProfile';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, ShieldX } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Group {
     id: string;
@@ -27,16 +28,18 @@ interface Member {
 export default function GroupDetails() {
     const params = useParams();
     const id = params?.id as string;
+    const { currentUser } = useAuth();
 
     const [group, setGroup] = useState<Group | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
+    const [accessDenied, setAccessDenied] = useState(false);
     const [showBalances, setShowBalances] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
-        if (!id) return;
+        if (!id || !currentUser) return;
 
         const fetchGroupAndMembers = async () => {
             try {
@@ -44,6 +47,14 @@ export default function GroupDetails() {
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const groupData = { id: docSnap.id, ...docSnap.data() } as Group;
+
+                    // Check if current user is a member
+                    if (!groupData.memberIds.includes(currentUser.uid)) {
+                        setAccessDenied(true);
+                        setLoading(false);
+                        return;
+                    }
+
                     setGroup(groupData);
 
                     // Fetch user profiles for all members
@@ -69,7 +80,7 @@ export default function GroupDetails() {
             }
         };
         fetchGroupAndMembers();
-    }, [id, refreshKey]);
+    }, [id, refreshKey, currentUser]);
 
     if (loading) {
         return (
@@ -77,6 +88,24 @@ export default function GroupDetails() {
                 <div className="animate-pulse flex flex-col items-center">
                     <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
                     <div className="h-8 w-48 bg-gray-300 rounded"></div>
+                </div>
+            </div>
+        );
+    }
+
+    if (accessDenied) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <ShieldX className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                    <h1 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h1>
+                    <p className="text-gray-600 mb-6">You are not a member of this group.</p>
+                    <Link
+                        href="/dashboard"
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                        Back to Dashboard
+                    </Link>
                 </div>
             </div>
         );

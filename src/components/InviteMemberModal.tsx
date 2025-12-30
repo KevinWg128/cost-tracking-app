@@ -64,15 +64,19 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
     };
 
     const handleAddMember = async () => {
-        if (!searchResult) return;
+        if (!searchResult || !currentUser) return;
 
         setActionLoading(true);
         setMessage(null);
 
         try {
+            const token = await currentUser.getIdToken();
             const response = await fetch(`/api/groups/${groupId}/members`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
                 body: JSON.stringify({ userId: searchResult.uid }),
             });
             const result: ApiResponse = await response.json();
@@ -103,13 +107,14 @@ export default function InviteMemberModal({ isOpen, onClose, groupId, onMemberAd
         setMessage(null);
 
         try {
+            const token = await currentUser.getIdToken();
             const response = await fetch(`/api/groups/${groupId}/invite`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    inviterUserId: currentUser.uid
-                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ email }),
             });
             const result: ApiResponse = await response.json();
 

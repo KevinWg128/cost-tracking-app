@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from 'react';
+import { User } from 'firebase/auth';
 
 interface ReceiptUploadProps {
     onParsed: (data: unknown, imageUrl: string) => void;
+    currentUser: User;
 }
 
 interface UploadResponse {
@@ -19,7 +21,7 @@ interface ParseResponse {
     error?: string;
 }
 
-export default function ReceiptUpload({ onParsed }: ReceiptUploadProps) {
+export default function ReceiptUpload({ onParsed, currentUser }: ReceiptUploadProps) {
     const [uploading, setUploading] = useState(false);
     const [status, setStatus] = useState('');
 
@@ -104,9 +106,13 @@ export default function ReceiptUpload({ onParsed }: ReceiptUploadProps) {
             setStatus('Analyzing receipt with Gemini...');
 
             // Step 4: Parse receipt with Gemini using S3 URL via API route
+            const token = await currentUser.getIdToken();
             const parseResponse = await fetch('/api/receipts/parse', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
                 body: JSON.stringify({ imageUrl: s3Url }),
             });
             const parseResult: ParseResponse = await parseResponse.json();

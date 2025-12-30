@@ -1,12 +1,14 @@
 /**
  * API route handler for parsing receipts with Gemini AI
  * POST /api/receipts/parse
+ * Requires: Authentication
  */
 
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { geminiClient } from '@/lib/gemini';
 import { isValidImageUrl } from '@/lib/validation';
+import { verifyAuthToken } from '@/lib/auth';
 
 interface ParseRequest {
     imageUrl: string;
@@ -14,6 +16,12 @@ interface ParseRequest {
 
 export async function POST(request: NextRequest) {
     try {
+        // Authenticate the caller
+        const authResult = await verifyAuthToken(request);
+        if (!authResult) {
+            return errorResponse('Authentication required', ErrorCodes.UNAUTHORIZED);
+        }
+
         const body: ParseRequest = await request.json();
         const { imageUrl } = body;
 

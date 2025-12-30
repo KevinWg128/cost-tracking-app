@@ -24,10 +24,10 @@ This document outlines the security checklist items that are currently not met a
 | **Password length/complexity is sufficient** | [signup/page.tsx:32-33](file:///home/kevin/side-project/cost-tracking-app/src/app/signup/page.tsx#L32-L33) | ✅ **Addressed**: Password validation now requires minimum 8 characters, uppercase, lowercase, number, and special character with visual feedback. |
 | **Invalid login attempts handled with lockouts/rate limits** | [signin/page.tsx](file:///home/kevin/side-project/cost-tracking-app/src/app/signin/page.tsx), [route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/auth/signin/route.ts) | ✅ **Addressed**: Server-side rate limiting via API route with 5 attempts per 15-minute window, lockout countdown UI, and remaining attempts warning. |
 | **Forgot password feature is secure** | [forgot-password/page.tsx](file:///home/kevin/side-project/cost-tracking-app/src/app/forgot-password/page.tsx), [route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/auth/forgot-password/route.ts) | ✅ **Addressed**: Secure forgot password flow via Firebase Auth with rate limiting (3 requests/15 min) and generic responses to prevent user enumeration. |
-| **Authorization checks are sufficiently granular** | [inviteActions.ts:54-81](file:///home/kevin/side-project/cost-tracking-app/src/server/inviteActions.ts#L54-L81) | `addMemberToGroup` doesn't verify the caller has permission to add members. |
-| **Authorization uses deny by default** | [groups/[id]/page.tsx:43-46](file:///home/kevin/side-project/cost-tracking-app/src/app/groups/%5Bid%5D/page.tsx#L43-L46) | Group data is fetched without checking if the current user is a member. |
+| **Authorization checks are sufficiently granular** | [auth.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/auth.ts), [members/route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/groups/[id]/members/route.ts), [invite/route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/groups/[id]/invite/route.ts) | ✅ **Addressed**: API routes now verify caller's Firebase ID token and check group membership before allowing actions. |
+| **Authorization uses deny by default** | [groups/[id]/page.tsx](file:///home/kevin/side-project/cost-tracking-app/src/app/groups/[id]/page.tsx) | ✅ **Addressed**: Group pages now verify current user is in `memberIds` before displaying content; shows "Access Denied" otherwise. |
 | **Authorization for roles is clear and correctly applied** | N/A | No role-based authorization system exists. |
-| **Parameter/cookie manipulation cannot circumvent authorization** | [groups/[id]/page.tsx:28-29](file:///home/kevin/side-project/cost-tracking-app/src/app/groups/%5Bid%5D/page.tsx#L28-L29) | The `id` param from URL is used directly to fetch group data without ownership verification. |
+| **Parameter/cookie manipulation cannot circumvent authorization** | [auth.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/auth.ts), [groups/[id]/page.tsx](file:///home/kevin/side-project/cost-tracking-app/src/app/groups/[id]/page.tsx) | ✅ **Addressed**: Server validates caller identity via Firebase ID token; client checks membership against authenticated user UID. |
 
 ---
 
@@ -79,7 +79,7 @@ This document outlines the security checklist items that are currently not met a
 
 | Checklist Item | File & Line | Explanation |
 |----------------|-------------|-------------|
-| **Identify exploitable logic flaws** | [inviteActions.ts:54-81](file:///home/kevin/side-project/cost-tracking-app/src/server/inviteActions.ts#L54-L81) | Any user can add any other user to any group without owner verification. |
+| **Identify exploitable logic flaws** | [auth.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/auth.ts), [members/route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/groups/[id]/members/route.ts) | ✅ **Addressed**: Group member addition now requires caller authentication and group membership verification. |
 
 ---
 
