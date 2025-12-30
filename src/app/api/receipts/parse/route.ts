@@ -9,12 +9,15 @@ import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { geminiClient } from '@/lib/gemini';
 import { isValidImageUrl } from '@/lib/validation';
 import { verifyAuthToken } from '@/lib/auth';
+import { logger, generateRequestId } from '@/lib/logger';
 
 interface ParseRequest {
     imageUrl: string;
 }
 
 export async function POST(request: NextRequest) {
+    const requestId = generateRequestId();
+
     try {
         // Authenticate the caller
         const authResult = await verifyAuthToken(request);
@@ -33,10 +36,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log('Analyzing receipt with Gemini using S3 URL...');
+        logger.info('Analyzing receipt with Gemini', { requestId, userId: authResult.uid });
 
         // Prepare Gemini request
-        console.time('Gemini Request');
+        const startTime = Date.now();
         const prompt = `
       Analyze this receipt image and extract the following:
       1. List of items purchased (name, price, quantity).
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
     `;
 
         // Generate Content using file URL instead of inline base64
-        console.log('Using model with image URL');
+        logger.debug('Sending request to Gemini model', { requestId });
         const response = await geminiClient.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
@@ -87,14 +90,21 @@ export async function POST(request: NextRequest) {
                 },
             ],
         });
-        console.timeEnd('Gemini Request');
+        const duration = Date.now() - startTime;
 
         // TS confirms it is a getter.
         const text = response.text;
-        console.log('Gemini Raw Response length:', text?.length);
+        logger.debug('Gemini response received', {
+            requestId,
+            responseLength: text?.length,
+            durationMs: duration
+        });
 
         if (typeof text !== 'string') {
-            console.log('Warning: response.text is not a string, it is:', typeof text);
+            logger.warn('Unexpected response type from Gemini', {
+                requestId,
+                responseType: typeof text
+            });
         }
 
         // Parse JSON
@@ -104,11 +114,20 @@ export async function POST(request: NextRequest) {
             : '{}';
         const data = JSON.parse(cleanedText);
 
+        logger.info('Receipt parsed successfully', {
+            requestId,
+            userId: authResult.uid,
+            merchant: data.merchant,
+            category: data.category,
+            durationMs: duration
+        });
+
         return successResponse({ data });
 
     } catch (error: unknown) {
-        console.error('Error parsing receipt:', error);
+        logger.error('Error parsing receipt', error, { requestId });
         const message = error instanceof Error ? error.message : 'Parse failed';
         return errorResponse(message, ErrorCodes.INTERNAL_ERROR);
     }
 }
+

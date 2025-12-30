@@ -8,6 +8,7 @@ import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { isValidEmail } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 export interface SearchUserResult {
     uid: string;
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
         return successResponse({ user });
 
     } catch (error: unknown) {
-        console.error('Error searching user:', error);
+        logger.error('Error searching user', error);
         const message = error instanceof Error ? error.message : 'Search failed';
         return errorResponse(message, ErrorCodes.INTERNAL_ERROR);
     }

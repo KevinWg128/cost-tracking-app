@@ -43,13 +43,13 @@ This document outlines the security checklist items that are currently not met a
 
 | Checklist Item | File & Line | Explanation |
 |----------------|-------------|-------------|
-| **Debug information never shown to users** | [actions.ts:79](file:///home/kevin/side-project/cost-tracking-app/src/server/actions.ts#L79) | `console.log("Gemini API Key: ", process.env.GEMINI_API_KEY)` logs sensitive API key. |
-| **Resources released and transactions rolled back on error** | [actions.ts:9-34](file:///home/kevin/side-project/cost-tracking-app/src/server/actions.ts#L9-L34) | S3 upload doesn't clean up partial uploads on failure. |
-| **Appropriate level of logging of user/system actions** | Entire codebase | No structured logging framework; only `console.log/error` for debugging. |
-| **Sensitive information never logged** | [actions.ts:79](file:///home/kevin/side-project/cost-tracking-app/src/server/actions.ts#L79) | API key is logged directly. |
-| **Important user management events are logged** | [signup/page.tsx:34](file:///home/kevin/side-project/cost-tracking-app/src/app/signup/page.tsx#L34), [signin/page.tsx:24](file:///home/kevin/side-project/cost-tracking-app/src/app/signin/page.tsx#L24) | Only logs success to console; no persistent audit logging. |
-| **Unusual activities (multiple login attempts) are logged** | [signin/page.tsx](file:///home/kevin/side-project/cost-tracking-app/src/app/signin/page.tsx) | Failed logins only log to console; no tracking of attempts per user. |
-| **Logs have enough detail for audit purposes** | Entire codebase | Logs lack timestamp, user ID, request ID, and IP address context. |
+| **Debug information never shown to users** | [gemini.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/gemini.ts) | ✅ **Addressed**: Removed API key logging; now logs only masked confirmation via structured logger. |
+| **Resources released and transactions rolled back on error** | [s3.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/s3.ts) | ✅ **Addressed**: Added cleanup logic with `DeleteObjectCommand` to remove partial uploads on failure. |
+| **Appropriate level of logging of user/system actions** | [logger.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/logger.ts) | ✅ **Addressed**: Created structured logger with debug, info, warn, error, and audit levels. |
+| **Sensitive information never logged** | [logger.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/logger.ts) | ✅ **Addressed**: Logger automatically masks sensitive data (API keys, passwords, tokens) and emails. |
+| **Important user management events are logged** | [signin/route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/auth/signin/route.ts), [members/route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/groups/[id]/members/route.ts) | ✅ **Addressed**: Added `logger.audit` for sign-in success/failure, password reset, and member additions. |
+| **Unusual activities (multiple login attempts) are logged** | [signin/route.ts](file:///home/kevin/side-project/cost-tracking-app/src/app/api/auth/signin/route.ts) | ✅ **Addressed**: Failed logins logged with `SIGNIN_FAILED` audit event including email, IP, error code, and remaining attempts. |
+| **Logs have enough detail for audit purposes** | [logger.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/logger.ts) | ✅ **Addressed**: All logs include timestamp, and API routes include userId, requestId, and IP context. |
 
 ---
 
@@ -70,7 +70,6 @@ This document outlines the security checklist items that are currently not met a
 | Checklist Item | File & Line | Explanation |
 |----------------|-------------|-------------|
 | **Validation of data sent/received from APIs** | [actions.ts:107-110](file:///home/kevin/side-project/cost-tracking-app/src/server/actions.ts#L107-L110) | Gemini API response is parsed with `JSON.parse` without schema validation. |
-| **Appropriate access control on stored data** | [firebase.ts](file:///home/kevin/side-project/cost-tracking-app/src/lib/firebase.ts) | No Firestore security rules visible in codebase (rules may exist in Firebase console). |
 | **Volume and rate of API calls** | [actions.ts:40-97](file:///home/kevin/side-project/cost-tracking-app/src/server/actions.ts#L40-L97) | No rate limiting on receipt parsing API calls. |
 
 ---

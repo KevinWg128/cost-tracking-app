@@ -10,6 +10,7 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { isValidFirestoreId } from '@/lib/validation';
 import { verifyAuthToken, isGroupMember } from '@/lib/auth';
+import { logger, generateRequestId } from '@/lib/logger';
 
 interface AddMemberRequest {
     userId: string;
@@ -20,6 +21,8 @@ interface RouteContext {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+    const requestId = generateRequestId();
+
     try {
         // Authenticate the caller
         const authResult = await verifyAuthToken(request);
@@ -62,10 +65,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
             memberIds: arrayUnion(userId),
         });
 
+        logger.audit('GROUP_MEMBER_ADDED', {
+            requestId,
+            groupId,
+            userId,
+            addedBy: authResult.uid,
+            action: 'member_added',
+        });
+
         return successResponse({ message: 'Member added successfully' });
 
     } catch (error: unknown) {
-        console.error('Error adding member:', error);
+        logger.error('Error adding member', error, { requestId });
         const message = error instanceof Error ? error.message : 'Failed to add member';
         return errorResponse(message, ErrorCodes.INTERNAL_ERROR);
     }

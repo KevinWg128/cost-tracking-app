@@ -12,6 +12,7 @@ import { sendInviteEmail } from '@/lib/resend';
 import { getUserProfile } from '@/lib/userProfile';
 import { isValidEmail, isValidFirestoreId } from '@/lib/validation';
 import { verifyAuthToken, isGroupMember } from '@/lib/auth';
+import { logger, generateRequestId } from '@/lib/logger';
 
 interface InviteRequest {
     email: string;
@@ -22,6 +23,8 @@ interface RouteContext {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+    const requestId = generateRequestId();
+
     try {
         // Authenticate the caller
         const authResult = await verifyAuthToken(request);
@@ -67,13 +70,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
         const result = await sendInviteEmail(email, inviterName, groupName);
 
         if (!result.success) {
+            logger.warn('Failed to send invitation', {
+                requestId,
+                groupId,
+                email,
+                error: result.error
+            });
             return errorResponse(result.error || 'Failed to send invitation', ErrorCodes.INTERNAL_ERROR);
         }
+
+        logger.info('Invitation sent successfully', {
+            requestId,
+            groupId,
+            email,
+            invitedBy: authResult.uid,
+        });
 
         return successResponse({ message: 'Invitation sent successfully' });
 
     } catch (error: unknown) {
-        console.error('Error sending invitation:', error);
+        logger.error('Error sending invitation', error, { requestId });
         const message = error instanceof Error ? error.message : 'Failed to send invitation';
         return errorResponse(message, ErrorCodes.INTERNAL_ERROR);
     }
