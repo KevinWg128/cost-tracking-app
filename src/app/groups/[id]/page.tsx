@@ -9,14 +9,17 @@ import { useParams } from 'next/navigation';
 
 import BalanceView from '@/components/BalanceView';
 import InviteMemberModal from '@/components/InviteMemberModal';
+import MemberManagementModal from '@/components/MemberManagementModal';
 import { getUserProfile } from '@/lib/userProfile';
-import { UserPlus, ShieldX } from 'lucide-react';
+import { UserPlus, ShieldX, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Group {
     id: string;
     name: string;
     memberIds: string[];
+    adminIds: string[];
+    createdBy: string;
     currency: string;
 }
 
@@ -36,6 +39,7 @@ export default function GroupDetails() {
     const [accessDenied, setAccessDenied] = useState(false);
     const [showBalances, setShowBalances] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const [showMemberManagement, setShowMemberManagement] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
@@ -46,7 +50,12 @@ export default function GroupDetails() {
                 const docRef = doc(db, "groups", id);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
-                    const groupData = { id: docSnap.id, ...docSnap.data() } as Group;
+                    const rawData = docSnap.data();
+                    const groupData = {
+                        id: docSnap.id,
+                        ...rawData,
+                        adminIds: rawData.adminIds || [],  // Lazy migration
+                    } as Group;
 
                     // Check if current user is a member
                     if (!groupData.memberIds.includes(currentUser.uid)) {
@@ -125,13 +134,20 @@ export default function GroupDetails() {
                         <h1 className="text-3xl font-extrabold mt-2 text-gray-900 tracking-tight">{group.name}</h1>
                         <p className="text-sm text-gray-500 mt-1">{group.memberIds.length} members • {group.currency}</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                         <button
                             onClick={() => setShowInviteModal(true)}
                             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
                         >
                             <UserPlus size={16} />
                             Invite
+                        </button>
+                        <button
+                            onClick={() => setShowMemberManagement(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+                        >
+                            <Users size={16} />
+                            Members
                         </button>
                         <button
                             onClick={() => setShowBalances(true)}
@@ -165,6 +181,17 @@ export default function GroupDetails() {
                 onClose={() => setShowInviteModal(false)}
                 groupId={id}
                 onMemberAdded={() => setRefreshKey(prev => prev + 1)}
+            />
+
+            <MemberManagementModal
+                isOpen={showMemberManagement}
+                onClose={() => setShowMemberManagement(false)}
+                groupId={id}
+                groupName={group.name}
+                members={members}
+                ownerId={group.createdBy}
+                adminIds={group.adminIds}
+                onMemberUpdated={() => setRefreshKey(prev => prev + 1)}
             />
         </div>
     )

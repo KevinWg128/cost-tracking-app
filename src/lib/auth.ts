@@ -67,3 +67,74 @@ export async function isGroupMember(groupId: string, userId: string): Promise<bo
     }
 }
 
+/**
+ * Check if a user is the owner of a group
+ * @param groupId - The group ID to check
+ * @param userId - The user ID to check ownership for
+ * @returns true if user is the owner, false otherwise
+ */
+export async function isGroupOwner(groupId: string, userId: string): Promise<boolean> {
+    try {
+        const groupDoc = await adminDb.collection('groups').doc(groupId).get();
+
+        if (!groupDoc.exists) {
+            return false;
+        }
+
+        const groupData = groupDoc.data();
+        return groupData?.createdBy === userId;
+    } catch (error) {
+        logger.error('Error checking group ownership', error, { groupId, userId });
+        return false;
+    }
+}
+
+/**
+ * Check if a user is an admin of a group
+ * @param groupId - The group ID to check
+ * @param userId - The user ID to check admin status for
+ * @returns true if user is an admin, false otherwise
+ */
+export async function isGroupAdmin(groupId: string, userId: string): Promise<boolean> {
+    try {
+        const groupDoc = await adminDb.collection('groups').doc(groupId).get();
+
+        if (!groupDoc.exists) {
+            return false;
+        }
+
+        const groupData = groupDoc.data();
+        const adminIds = groupData?.adminIds || [];
+
+        return adminIds.includes(userId);
+    } catch (error) {
+        logger.error('Error checking admin status', error, { groupId, userId });
+        return false;
+    }
+}
+
+/**
+ * Check if a user can manage members of a group (is owner or admin)
+ * @param groupId - The group ID to check
+ * @param userId - The user ID to check management permissions for
+ * @returns true if user can manage members, false otherwise
+ */
+export async function canManageMembers(groupId: string, userId: string): Promise<boolean> {
+    try {
+        const groupDoc = await adminDb.collection('groups').doc(groupId).get();
+
+        if (!groupDoc.exists) {
+            return false;
+        }
+
+        const groupData = groupDoc.data();
+        const isOwner = groupData?.createdBy === userId;
+        const adminIds = groupData?.adminIds || [];
+        const isAdmin = adminIds.includes(userId);
+
+        return isOwner || isAdmin;
+    } catch (error) {
+        logger.error('Error checking management permissions', error, { groupId, userId });
+        return false;
+    }
+}
