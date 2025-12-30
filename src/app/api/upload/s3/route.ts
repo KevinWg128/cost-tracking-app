@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { uploadToS3AndGetPresignedUrl } from '@/lib/s3';
 import { isValidBase64Image, isValidFileName } from '@/lib/validation';
+import { logger, generateRequestId } from '@/lib/logger';
 
 interface UploadRequest {
     base64Image: string;
@@ -14,6 +15,8 @@ interface UploadRequest {
 }
 
 export async function POST(request: NextRequest) {
+    const requestId = generateRequestId();
+
     try {
         const body: UploadRequest = await request.json();
         const { base64Image, fileName } = body;
@@ -31,7 +34,7 @@ export async function POST(request: NextRequest) {
             return errorResponse('Invalid file name', ErrorCodes.BAD_REQUEST);
         }
 
-        console.log('Uploading image to S3...');
+        logger.info('Uploading image to S3', { requestId, fileName });
 
         // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
         const cleanBase64 = base64Image.includes('base64,')
@@ -45,17 +48,18 @@ export async function POST(request: NextRequest) {
         const key = `receipts/${Date.now()}_${fileName}`;
 
         // Upload to S3 and get presigned URL
-        console.time('S3 Upload');
+        const startTime = Date.now();
         const presignedUrl = await uploadToS3AndGetPresignedUrl(buffer, key, 'image/jpeg');
-        console.timeEnd('S3 Upload');
+        const duration = Date.now() - startTime;
 
-        console.log('Image uploaded to S3 successfully');
+        logger.info('Image uploaded to S3 successfully', { requestId, key, durationMs: duration });
 
         return successResponse({ url: presignedUrl, key });
 
     } catch (error: unknown) {
-        console.error('Error uploading to S3:', error);
+        logger.error('Error uploading to S3', error, { requestId });
         const message = error instanceof Error ? error.message : 'Upload failed';
         return errorResponse(message, ErrorCodes.INTERNAL_ERROR);
     }
 }
+

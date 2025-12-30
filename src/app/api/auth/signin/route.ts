@@ -9,8 +9,11 @@ import {
     getClientIP,
     RATE_LIMIT_CONFIG,
 } from '@/lib/rateLimit';
+import { logger, generateRequestId } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
+    const requestId = generateRequestId();
+
     try {
         const { email, password } = await request.json();
 
@@ -29,6 +32,13 @@ export async function POST(request: NextRequest) {
         // Check rate limit before attempting login
         const limitCheck = checkRateLimit(rateLimitKey);
         if (!limitCheck.allowed) {
+            logger.audit('SIGNIN_RATE_LIMITED', {
+                requestId,
+                ip: clientIP,
+                email,
+                action: 'signin_blocked',
+            });
+
             return NextResponse.json(
                 {
                     error: 'Too many login attempts. Please try again later.',
@@ -48,6 +58,14 @@ export async function POST(request: NextRequest) {
             // Reset attempts on successful login
             resetAttempts(rateLimitKey);
 
+            logger.audit('SIGNIN_SUCCESS', {
+                requestId,
+                userId: userCredential.user.uid,
+                email,
+                ip: clientIP,
+                action: 'signin_success',
+            });
+
             return NextResponse.json({
                 success: true,
                 uid: userCredential.user.uid,
@@ -59,6 +77,8 @@ export async function POST(request: NextRequest) {
 
             // Determine appropriate error message
             let errorMessage = 'Invalid email or password';
+            let errorCode = authError.code || 'unknown';
+
             if (authError.code === 'auth/user-not-found') {
                 errorMessage = 'Invalid email or password';
             } else if (authError.code === 'auth/wrong-password') {
@@ -70,6 +90,16 @@ export async function POST(request: NextRequest) {
             } else if (authError.code === 'auth/invalid-credential') {
                 errorMessage = 'Invalid email or password';
             }
+
+            logger.audit('SIGNIN_FAILED', {
+                requestId,
+                email,
+                ip: clientIP,
+                action: 'signin_failed',
+                errorCode,
+                remainingAttempts: failedResult.remainingAttempts,
+                isLockedOut: failedResult.isLockedOut,
+            });
 
             // Include lockout info if applicable
             if (failedResult.isLockedOut) {
@@ -93,10 +123,11 @@ export async function POST(request: NextRequest) {
             );
         }
     } catch (error) {
-        console.error('Sign-in error:', error);
+        logger.error('Sign-in error', error, { requestId });
         return NextResponse.json(
             { error: 'An unexpected error occurred' },
             { status: 500 }
         );
     }
 }
+

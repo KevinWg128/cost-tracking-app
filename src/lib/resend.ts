@@ -2,6 +2,7 @@
 
 import { Resend } from 'resend';
 import { isValidEmail } from './validation';
+import { logger } from './logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -49,14 +50,14 @@ export async function sendInviteEmail(
         });
 
         if (error) {
-            console.error("Error sending invite email:", error);
+            logger.error('Error sending invite email', error, { recipientEmail, groupName });
             return { success: false, error: error.message };
         }
 
         return { success: true, data };
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error("Error sending invite email:", error);
+        logger.error('Error sending invite email', error, { recipientEmail, groupName });
         return { success: false, error: errorMessage };
     }
 }

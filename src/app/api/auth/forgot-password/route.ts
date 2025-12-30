@@ -8,11 +8,14 @@ import {
     getClientIP,
 } from '@/lib/rateLimit';
 import { isValidEmail } from '@/lib/validation';
+import { logger, generateRequestId } from '@/lib/logger';
 
 // Rate limit configuration for password reset (more restrictive)
 const MAX_RESET_ATTEMPTS = 3;
 
 export async function POST(request: NextRequest) {
+    const requestId = generateRequestId();
+
     try {
         const { email } = await request.json();
 
@@ -55,9 +58,20 @@ export async function POST(request: NextRequest) {
         try {
             // Send password reset email via Firebase
             await sendPasswordResetEmail(auth, email);
+
+            logger.audit('PASSWORD_RESET_REQUESTED', {
+                requestId,
+                email,
+                ip: clientIP,
+                action: 'password_reset_sent',
+            });
         } catch (firebaseError: any) {
             // Log the error for debugging but don't reveal to user
-            console.error('Firebase password reset error:', firebaseError.code);
+            logger.error('Firebase password reset error', firebaseError, {
+                requestId,
+                email,
+                errorCode: firebaseError.code,
+            });
             // We don't return an error to the user to prevent email enumeration
             // Even if the email doesn't exist, we return success
         }
@@ -68,7 +82,7 @@ export async function POST(request: NextRequest) {
             message: 'If an account exists with this email, a password reset link has been sent.',
         });
     } catch (error) {
-        console.error('Password reset error:', error);
+        logger.error('Password reset error', error);
         return NextResponse.json(
             { error: 'An unexpected error occurred' },
             { status: 500 }

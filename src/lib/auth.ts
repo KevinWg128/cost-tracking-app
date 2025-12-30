@@ -5,6 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { adminAuth, adminDb } from './firebaseAdmin';
+import { logger } from './logger';
 
 interface AuthResult {
     uid: string;
@@ -37,7 +38,7 @@ export async function verifyAuthToken(request: NextRequest): Promise<AuthResult 
             email: decodedToken.email,
         };
     } catch (error) {
-        console.error('Token verification failed:', error);
+        logger.error('Token verification failed', error);
         return null;
     }
 }
@@ -61,7 +62,8 @@ export async function isGroupMember(groupId: string, userId: string): Promise<bo
 
         return memberIds.includes(userId);
     } catch (error) {
-        console.error('Error checking group membership:', error);
+        logger.error('Error checking group membership', error, { groupId, userId });
         return false;
     }
 }
+
