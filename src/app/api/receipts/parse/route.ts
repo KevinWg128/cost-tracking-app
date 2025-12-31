@@ -43,10 +43,11 @@ export async function POST(request: NextRequest) {
         const prompt = `
       Analyze this receipt image and extract the following:
       1. List of items purchased (name, price, quantity).
-      2. Total amount of the receipt.
-      3. Date of the receipt.
-      4. Merchant/Store name.
-      5. Categorize the expense based on the merchant and items. Use one of these categories:
+      2. Taxes, tips, service fees, and any other additional charges - include these as separate items in the items list.
+      3. Total amount of the receipt.
+      4. Date of the receipt.
+      5. Merchant/Store name.
+      6. Categorize the expense based on the merchant and items. Use one of these categories:
          - Grocery (supermarkets, food stores)
          - Dining (restaurants, cafes, fast food)
          - Travel (flights, hotels, car rentals, gas stations)
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest) {
          - Transportation (transit, taxi, ride-sharing)
          - Other (anything that doesn't fit above)
 
+      IMPORTANT: Include taxes (HST, GST, PST, VAT, Sales Tax, etc.), tips, service charges, and any other fees as separate items in the items array. For example:
+      { "name": "HST (13%)", "price": 5.20, "quantity": 1 }
+      { "name": "Tip", "price": 10.00, "quantity": 1 }
+
       Return ONLY a valid JSON object with this structure:
       {
         "merchant": "Store Name",
@@ -65,7 +70,8 @@ export async function POST(request: NextRequest) {
         "total": 123.45,
         "category": "Grocery",
         "items": [
-          { "name": "Item 1", "price": 10.00, "quantity": 1 }
+          { "name": "Item 1", "price": 10.00, "quantity": 1 },
+          { "name": "HST (13%)", "price": 1.30, "quantity": 1 }
         ]
       }
       Do not include any Markdown formatting (no \`\`\`json). Just the raw JSON string.

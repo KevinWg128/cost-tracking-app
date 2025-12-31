@@ -32,6 +32,23 @@ interface ItemSplitterProps {
 export default function ItemSplitter({ item, members, onChange, currency }: ItemSplitterProps) {
     const [isOpen, setIsOpen] = useState(false);
 
+    /**
+     * Distribute a total amount among N people so that:
+     * 1. Each amount is a whole cent value
+     * 2. The sum of all amounts equals the total exactly
+     * Uses the Largest Remainder Method for fair distribution
+     */
+    const distributeCents = (total: number, count: number): number[] => {
+        const totalCents = Math.round(total * 100);
+        const baseCents = Math.floor(totalCents / count);
+        const remainder = totalCents % count;
+
+        // First `remainder` people get baseCents + 1, rest get baseCents
+        return Array.from({ length: count }, (_, i) =>
+            (baseCents + (i < remainder ? 1 : 0)) / 100
+        );
+    };
+
     // Initial assignment calculation (defaults to equal if empty)
     useEffect(() => {
         if (item.assignments.length === 0 && members.length > 0) {
@@ -44,10 +61,10 @@ export default function ItemSplitter({ item, members, onChange, currency }: Item
             onChange({ ...item, assignments: [], splitType: 'equal' });
             return;
         }
-        const splitAmount = item.price / selectedUids.length;
-        const newAssignments = selectedUids.map(uid => ({
+        const amounts = distributeCents(item.price, selectedUids.length);
+        const newAssignments = selectedUids.map((uid, index) => ({
             uid,
-            amount: splitAmount,
+            amount: amounts[index],
             percent: 100 / selectedUids.length
         }));
         // preserve splitType unless forcing equal
@@ -82,7 +99,7 @@ export default function ItemSplitter({ item, members, onChange, currency }: Item
     };
 
     const updatePercent = (uid: string, percent: number) => {
-        const amount = (percent / 100) * item.price;
+        const amount = Math.round((percent / 100) * item.price * 100) / 100;
         const newAssignments = item.assignments.map(a =>
             a.uid === uid ? { ...a, amount, percent } : a
         );
