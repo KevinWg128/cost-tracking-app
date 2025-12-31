@@ -24,7 +24,7 @@ const CATEGORY_COLORS: Record<string, string> = {
     'Entertainment': '#8B5CF6', // Violet
     'Shopping': '#EC4899',     // Pink
     'Utilities': '#6366F1',    // Indigo
-    'Internet': '#14B8A6',     // Teal
+    'Internet': '#00e1ffff',     // Teal
     'Healthcare': '#EF4444',   // Red
     'Transportation': '#F97316', // Orange
     'Other': '#6B7280',        // Gray

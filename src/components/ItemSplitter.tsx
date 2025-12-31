@@ -143,7 +143,7 @@ export default function ItemSplitter({ item, members, onChange, currency }: Item
                             onClick={() => onChange({ ...item, splitType: 'exact' })}
                             className={`px-3 py-1 rounded-full border ${item.splitType === 'exact' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
                         >
-                            Exact
+                            Belongs to
                         </button>
                         <button
                             type="button"
