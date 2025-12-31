@@ -2,11 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowRight, Receipt, Split, Wallet, CheckCircle2 } from "lucide-react";
 
 export default function Home() {
   const { currentUser } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (currentUser) {
+      router.push('/dashboard');
+    }
+  }, [currentUser, router]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30">
@@ -80,7 +89,7 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                 <Link
-                  href="/signup"
+                  href={currentUser ? "/dashboard" : "/signup"}
                   className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-all transform hover:-translate-y-0.5 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                 >
                   Start Splitting Free
