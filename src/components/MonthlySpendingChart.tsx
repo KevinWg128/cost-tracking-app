@@ -139,12 +139,26 @@ export default function MonthlySpendingChart({ groupIds }: MonthlySpendingChartP
     const calculatePieSlices = () => {
         if (totalSpending === 0) return [];
 
-        const slices: { path: string; color: string; category: string; amount: number; percentage: number; midAngle: number }[] = [];
+        const slices: { path: string; color: string; category: string; amount: number; percentage: number; midAngle: number; isFullCircle: boolean }[] = [];
         let currentAngle = -90; // Start from top
 
         categorySpending.forEach(cat => {
             const percentage = (cat.amount / totalSpending) * 100;
             const angle = (cat.amount / totalSpending) * 360;
+
+            // Handle single category (100%) case - draw a full circle
+            if (angle >= 359.99) {
+                slices.push({
+                    path: '', // Not used for full circle
+                    color: cat.color,
+                    category: cat.category,
+                    amount: cat.amount,
+                    percentage,
+                    midAngle: 0,
+                    isFullCircle: true
+                });
+                return;
+            }
 
             const startAngle = currentAngle;
             const endAngle = currentAngle + angle;
@@ -169,7 +183,8 @@ export default function MonthlySpendingChart({ groupIds }: MonthlySpendingChartP
                 category: cat.category,
                 amount: cat.amount,
                 percentage,
-                midAngle
+                midAngle,
+                isFullCircle: false
             });
 
             currentAngle += angle;
@@ -219,19 +234,38 @@ export default function MonthlySpendingChart({ groupIds }: MonthlySpendingChartP
                     <div className="relative w-48 h-48 flex-shrink-0">
                         <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-0">
                             {pieSlices.map((slice, idx) => (
-                                <path
-                                    key={idx}
-                                    d={slice.path}
-                                    fill={slice.color}
-                                    className="transition-all duration-200 cursor-pointer"
-                                    style={{
-                                        opacity: hoveredCategory === null || hoveredCategory === slice.category ? 1 : 0.4,
-                                        transform: hoveredCategory === slice.category ? 'scale(1.03)' : 'scale(1)',
-                                        transformOrigin: 'center'
-                                    }}
-                                    onMouseEnter={() => setHoveredCategory(slice.category)}
-                                    onMouseLeave={() => setHoveredCategory(null)}
-                                />
+                                slice.isFullCircle ? (
+                                    // Render full circle for single category (100%)
+                                    <circle
+                                        key={idx}
+                                        cx="50"
+                                        cy="50"
+                                        r="40"
+                                        fill={slice.color}
+                                        className="transition-all duration-200 cursor-pointer"
+                                        style={{
+                                            opacity: hoveredCategory === null || hoveredCategory === slice.category ? 1 : 0.4,
+                                            transform: hoveredCategory === slice.category ? 'scale(1.03)' : 'scale(1)',
+                                            transformOrigin: 'center'
+                                        }}
+                                        onMouseEnter={() => setHoveredCategory(slice.category)}
+                                        onMouseLeave={() => setHoveredCategory(null)}
+                                    />
+                                ) : (
+                                    <path
+                                        key={idx}
+                                        d={slice.path}
+                                        fill={slice.color}
+                                        className="transition-all duration-200 cursor-pointer"
+                                        style={{
+                                            opacity: hoveredCategory === null || hoveredCategory === slice.category ? 1 : 0.4,
+                                            transform: hoveredCategory === slice.category ? 'scale(1.03)' : 'scale(1)',
+                                            transformOrigin: 'center'
+                                        }}
+                                        onMouseEnter={() => setHoveredCategory(slice.category)}
+                                        onMouseLeave={() => setHoveredCategory(null)}
+                                    />
+                                )
                             ))}
                             {/* Center circle for donut effect */}
                             <circle cx="50" cy="50" r="20" fill="white" />
@@ -247,8 +281,8 @@ export default function MonthlySpendingChart({ groupIds }: MonthlySpendingChartP
                         )}
                     </div>
 
-                    {/* Legend */}
-                    <div className="flex-1 grid grid-cols-2 gap-2">
+                    {/* Legend - hidden on mobile */}
+                    <div className="hidden md:grid flex-1 grid-cols-2 gap-2">
                         {categorySpending.map((cat, idx) => (
                             <div
                                 key={idx}
