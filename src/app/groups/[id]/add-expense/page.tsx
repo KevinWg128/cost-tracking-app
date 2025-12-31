@@ -57,6 +57,7 @@ export default function AddExpensePage() {
     const [receiptUrl, setReceiptUrl] = useState('');
     const [groupMembers, setGroupMembers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [paidByMemberId, setPaidByMemberId] = useState<string>('');
 
     // Split modal state
     const [showSplitModal, setShowSplitModal] = useState(false);
@@ -84,6 +85,12 @@ export default function AddExpensePage() {
                 });
                 const membersData = await Promise.all(memberPromises);
                 setGroupMembers(membersData);
+                // Initialize paidByMemberId to current user if they're a member
+                if (currentUser && membersData.some(m => m.uid === currentUser.uid)) {
+                    setPaidByMemberId(currentUser.uid);
+                } else if (membersData.length > 0) {
+                    setPaidByMemberId(membersData[0].uid);
+                }
             }
         };
         fetchGroupAndMembers();
@@ -131,7 +138,7 @@ export default function AddExpensePage() {
         try {
             await addDoc(collection(db, "expenses"), {
                 groupId: id,
-                payerId: currentUser.uid,
+                payerId: paidByMemberId || currentUser.uid,
                 description: parsedData.merchant || "Unknown Store",
                 totalAmount: parsedData.total,
                 category: parsedData.category,
@@ -290,6 +297,25 @@ export default function AddExpensePage() {
 
                 {step === 'review' && parsedData && (
                     <div className="bg-white p-6 rounded-2xl shadow-sm space-y-6">
+                        {/* Paid By Selector */}
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <label className="block text-sm font-medium text-blue-700 mb-2">Paid By</label>
+                            <select
+                                value={paidByMemberId}
+                                onChange={e => setPaidByMemberId(e.target.value)}
+                                className="w-full border border-blue-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 bg-white font-medium"
+                            >
+                                {groupMembers.map(member => (
+                                    <option key={member.uid} value={member.uid}>
+                                        {member.name}{member.uid === currentUser?.uid ? ' (Me)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-blue-600 mt-2">
+                                Select the person who paid for this expense
+                            </p>
+                        </div>
+
                         <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Merchant</label>
@@ -468,8 +494,8 @@ export default function AddExpensePage() {
 
                             {splitModalType === 'percent' && (
                                 <div className={`text-sm p-3 rounded-lg ${Math.abs(Object.values(memberValues).reduce((sum, v) => sum + v, 0) - 100) < 0.5
-                                        ? 'bg-green-50 text-green-700'
-                                        : 'bg-red-50 text-red-700'
+                                    ? 'bg-green-50 text-green-700'
+                                    : 'bg-red-50 text-red-700'
                                     }`}>
                                     Total: {Object.values(memberValues).reduce((sum, v) => sum + v, 0).toFixed(1)}%
                                     {Math.abs(Object.values(memberValues).reduce((sum, v) => sum + v, 0) - 100) >= 0.5 && ' (must be 100%)'}
