@@ -10,10 +10,9 @@
 
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
 import { sendInviteEmail, sendRegisteredUserInviteEmail } from '@/lib/resend';
-import { getUserProfile } from '@/lib/userProfile';
+import { getUserProfileAdmin } from '@/lib/userProfileAdmin';
 import { createPendingInvitation } from '@/lib/pendingInvitations';
 import { isValidEmail, isValidFirestoreId } from '@/lib/validation';
 import { verifyAuthToken, isGroupMember } from '@/lib/auth';
@@ -57,37 +56,35 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
 
         // Get inviter's name from their profile (using authenticated user's UID)
-        const inviterProfile = await getUserProfile(authResult.uid);
+        // Use Admin version to bypass rules
+        const inviterProfile = await getUserProfileAdmin(authResult.uid);
         const inviterName = inviterProfile
             ? `${inviterProfile.firstName} ${inviterProfile.lastName}`.trim() || 'A friend'
             : 'A friend';
 
-        // Get group name
-        const groupRef = doc(db, 'groups', groupId);
-        const groupSnap = await getDoc(groupRef);
+        // Get group name using Admin SDK
+        const groupSnap = await adminDb.collection('groups').doc(groupId).get();
 
-        if (!groupSnap.exists()) {
+        if (!groupSnap.exists) {
             return errorResponse('Group not found', ErrorCodes.NOT_FOUND);
         }
 
         const groupData = groupSnap.data();
-        const groupName = groupData.name || 'an expense group';
+        const groupName = groupData?.name || 'an expense group';
 
         // Check if user is already a member
-        if (groupData.memberIds?.includes(authResult.uid)) {
+        if (groupData?.memberIds?.includes(authResult.uid)) {
             // Check if the email being invited is the caller themselves
-            const callerProfile = await getUserProfile(authResult.uid);
+            const callerProfile = await getUserProfileAdmin(authResult.uid);
             if (callerProfile?.email?.toLowerCase() === normalizedEmail) {
                 return errorResponse('You cannot invite yourself', ErrorCodes.BAD_REQUEST);
             }
         }
 
         // Check if user already exists in the system
-        const usersQuery = query(
-            collection(db, 'users'),
-            where('email', '==', normalizedEmail)
-        );
-        const userQuerySnap = await getDocs(usersQuery);
+        const userQuerySnap = await adminDb.collection('users')
+            .where('email', '==', normalizedEmail)
+            .get();
 
         let inviteeUid: string | undefined;
         let isRegisteredUser = false;
@@ -98,7 +95,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             isRegisteredUser = true;
 
             // Check if user is already a member of the group
-            if (groupData.memberIds?.includes(inviteeUid)) {
+            if (groupData?.memberIds?.includes(inviteeUid)) {
                 return errorResponse('User is already a member of this group', ErrorCodes.BAD_REQUEST);
             }
         }
@@ -176,3 +173,4 @@ export async function POST(request: NextRequest, context: RouteContext) {
         return errorResponse(message, ErrorCodes.INTERNAL_ERROR);
     }
 }
+

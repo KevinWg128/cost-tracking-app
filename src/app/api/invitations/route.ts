@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { getPendingInvitationsForUser, getPendingInvitationsForEmail } from '@/lib/pendingInvitations';
-import { getUserProfile } from '@/lib/userProfile';
+import { getUserProfileAdmin } from '@/lib/userProfileAdmin';
 import { verifyAuthToken } from '@/lib/auth';
 import { logger, generateRequestId } from '@/lib/logger';
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         const invitationsByUid = await getPendingInvitationsForUser(authResult.uid);
 
         // Also check by email (for invitations created before user registered)
-        const userProfile = await getUserProfile(authResult.uid);
+        const userProfile = await getUserProfileAdmin(authResult.uid);
         let invitationsByEmail: typeof invitationsByUid = [];
 
         if (userProfile?.email) {
