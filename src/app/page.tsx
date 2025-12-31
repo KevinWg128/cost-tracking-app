@@ -24,10 +24,14 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
-              <Split size={20} />
-            </div>
-            CostShare
+            <Image
+              src="/favicon.ico"
+              alt="Halvsies Logo"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
+            Halvsies
           </Link>
 
           <div className="flex items-center gap-4">
@@ -169,7 +173,7 @@ export default function Home() {
             <div className="relative z-10 max-w-2xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to get started?</h2>
               <p className="text-zinc-400 mb-8 text-lg">
-                Join thousands of users who are already saving time and avoiding arguments by using CostShare.
+                Join thousands of users who are already saving time and avoiding arguments by using Halvsies.
               </p>
               <Link
                 href="/signup"
@@ -191,13 +195,17 @@ export default function Home() {
       <footer className="border-t border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950">
         <div className="container mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2 font-bold text-lg">
-            <div className="w-6 h-6 rounded bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-zinc-900">
-              <Split size={14} />
-            </div>
-            CostShare
+            <Image
+              src="/favicon.ico"
+              alt="Halvsies Logo"
+              width={24}
+              height={24}
+              className="rounded"
+            />
+            Halvsies
           </div>
           <p className="text-sm text-zinc-500">
-            © {new Date().getFullYear()} CostShare App. All rights reserved.
+            © {new Date().getFullYear()} Halvsies App. All rights reserved.
           </p>
         </div>
       </footer>
